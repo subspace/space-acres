@@ -91,6 +91,8 @@ subspace-rpc-primitives = { git = "https://github.com/subspace/subspace", rev = 
 subspace-runtime = { git = "https://github.com/subspace/subspace", rev = "b96ae888720551b22ece25cf1adba00615721fa9" }
 subspace-runtime-primitives = { git = "https://github.com/subspace/subspace", rev = "b96ae888720551b22ece25cf1adba00615721fa9" }
 subspace-service = { git = "https://github.com/subspace/subspace", rev = "b96ae888720551b22ece25cf1adba00615721fa9" }
+# connect to subspace node as client to make runtime API calls
+subxt = { version = "0.34", features = ["substrate-compat", "native", "jsonrpsee"] }
 supports-color = "3.0.0"
 thiserror = "1.0.57"
 thread-priority = "0.16.0"
