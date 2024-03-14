@@ -11418,7 +11418,6 @@ dependencies = [
  "async-trait",
  "backoff",
  "bytesize",
- "chrono",
  "clap 4.5.2",
  "dark-light",
  "dirs 5.0.1",

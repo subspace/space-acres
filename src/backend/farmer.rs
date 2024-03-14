@@ -5,7 +5,6 @@ use crate::backend::utils::{Handler, HandlerFn};
 use crate::backend::PieceGetterWrapper;
 use crate::PosTable;
 use anyhow::anyhow;
-use chrono::Utc;
 use event_listener_primitives::HandlerId;
 use futures::channel::oneshot;
 use futures::future::BoxFuture;
@@ -17,6 +16,7 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fmt, fs};
 use subspace_core_primitives::crypto::kzg::Kzg;
 use subspace_core_primitives::{PublicKey, Record, SectorIndex};
@@ -584,7 +584,11 @@ fn calculate_expected_reward_duration_from_now(
     last_reward_timestamp: Option<i64>,
 ) -> i64 {
     // Time elapsed since the last reward payment timestamp.
-    let time_previous = Utc::now().timestamp() - last_reward_timestamp.unwrap_or(0);
+    let time_previous = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+        - last_reward_timestamp.unwrap_or(0);
 
     // Expected time duration for next reward payment since the last reward payment timestamp.
     let expected_time_next = (total_space_pledged as i64 / space_pledged as i64) * time_previous;
