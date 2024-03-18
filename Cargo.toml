@@ -77,6 +77,7 @@ semver = "1.0.22"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 simple_moving_average = "1.0.2"
+sp-api = "28.0.0"
 sp-core = { git = "https://github.com/subspace/polkadot-sdk", rev = "d6b500960579d73c43fc4ef550b703acfa61c4c8", default-features = false }
 sp-consensus-subspace = { git = "https://github.com/subspace/subspace", rev = "b96ae888720551b22ece25cf1adba00615721fa9" }
 sp-domains-fraud-proof = { git = "https://github.com/subspace/subspace", rev = "b96ae888720551b22ece25cf1adba00615721fa9" }
@@ -97,7 +98,6 @@ thread-priority = "0.16.0"
 tokio = { version = "1.36.0", features = ["fs", "time"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-sp-api = "28.0.0"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"
@@ -116,11 +116,59 @@ numa = [
 #
 # This list is ordered alphabetically.
 [profile.dev.package]
+bitvec = { opt-level = 3 }
+blake2 = { opt-level = 3 }
+blake3 = { opt-level = 3 }
+blake2b_simd = { opt-level = 3 }
+blst = { opt-level = 3 }
+rust-kzg-blst = { opt-level = 3 }
+chacha20 = { opt-level = 3 }
+chacha20poly1305 = { opt-level = 3 }
+cranelift-codegen = { opt-level = 3 }
+cranelift-wasm = { opt-level = 3 }
+crc32fast = { opt-level = 3 }
+crossbeam-deque = { opt-level = 3 }
+crypto-mac = { opt-level = 3 }
+curve25519-dalek = { opt-level = 3 }
+ed25519-zebra = { opt-level = 3 }
+flate2 = { opt-level = 3 }
+futures-channel = { opt-level = 3 }
+hashbrown = { opt-level = 3 }
+hash-db = { opt-level = 3 }
+hmac = { opt-level = 3 }
+httparse = { opt-level = 3 }
+integer-sqrt = { opt-level = 3 }
+k256 = { opt-level = 3 }
+keccak = { opt-level = 3 }
+kzg = { opt-level = 3 }
+libsecp256k1 = { opt-level = 3 }
+libz-sys = { opt-level = 3 }
+mio = { opt-level = 3 }
+nalgebra = { opt-level = 3 }
+num-bigint = { opt-level = 3 }
 parking_lot = { opt-level = 3 }
+parking_lot_core = { opt-level = 3 }
+percent-encoding = { opt-level = 3 }
+primitive-types = { opt-level = 3 }
+ring = { opt-level = 3 }
+rustls = { opt-level = 3 }
+secp256k1 = { opt-level = 3 }
+sha2 = { opt-level = 3 }
+sha3 = { opt-level = 3 }
+smallvec = { opt-level = 3 }
+snow = { opt-level = 3 }
+subspace-archiving = { opt-level = 3 }
 subspace-core-primitives = { opt-level = 3 }
 subspace-erasure-coding = { opt-level = 3 }
 subspace-farmer-components = { opt-level = 3 }
 subspace-proof-of-space = { opt-level = 3 }
+subspace-proof-of-time = { opt-level = 3 }
+twox-hash = { opt-level = 3 }
+uint = { opt-level = 3 }
+x25519-dalek = { opt-level = 3 }
+yamux = { opt-level = 3 }
+zeroize = { opt-level = 3 }
+
 
 [profile.release]
 # Substrate runtime requires unwinding.
