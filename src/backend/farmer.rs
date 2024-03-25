@@ -15,6 +15,7 @@ use parking_lot::Mutex;
 use std::num::{NonZeroU8, NonZeroUsize};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fmt, fs};
 use subspace_core_primitives::crypto::kzg::Kzg;
 use subspace_core_primitives::{PublicKey, Record, SectorIndex};
@@ -670,4 +671,25 @@ pub(super) async fn create_farmer(farmer_options: FarmerOptions) -> anyhow::Resu
         notifications,
         action_sender,
     })
+}
+
+/// the farmer can expect to get the next reward payment in this time units (sec/min/hr).
+#[allow(dead_code)]
+pub(crate) fn calculate_expected_reward_duration_from_now(
+    total_space_pledged: u128,
+    space_pledged: u128,
+    last_reward_timestamp: Option<i64>,
+) -> i64 {
+    // Time elapsed since the last reward payment timestamp.
+    let time_previous = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+        - last_reward_timestamp.unwrap_or(0);
+
+    // Expected time duration for next reward payment since the last reward payment timestamp.
+    let expected_time_next = (total_space_pledged as i64 / space_pledged as i64) * time_previous;
+
+    // subtract the duration till now from the expected time duration to get the ETA duration.
+    expected_time_next - time_previous
 }

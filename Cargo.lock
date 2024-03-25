@@ -10810,6 +10810,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_moving_average",
+ "sp-api",
  "sp-consensus-subspace",
  "sp-core",
  "sp-domains-fraud-proof",
