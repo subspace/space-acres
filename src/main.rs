@@ -20,6 +20,7 @@ use futures::channel::mpsc;
 use futures::{select, FutureExt, SinkExt, StreamExt};
 use gtk::prelude::*;
 use parking_lot::Mutex;
+use relm4::factory::Position;
 use relm4::prelude::*;
 use relm4::{Sender, ShutdownReceiver, RELM_THREADS};
 use relm4_icons::icon_name;
@@ -206,6 +207,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
+    #[allow(dead_code)] 
     tray_icon: TrayIcon<TrayMenuSignal>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
@@ -565,8 +567,9 @@ impl AsyncComponent for App {
         model.menu_popover = widgets.menu_popover.clone();
 
         if init.minimize_on_start {
-            root.minimize();
+            root.hide();
         }
+
         root.connect_close_request(|view|{
             view.hide();
             gtk::glib::Propagation::Stop
@@ -579,7 +582,7 @@ impl AsyncComponent for App {
         &mut self,
         input: Self::Input,
         sender: AsyncComponentSender<Self>,
-        _root: &Self::Root,
+        root: &Self::Root,
     ) {
         match input {
             AppInput::OpenLogFolder => {
@@ -631,10 +634,7 @@ impl AsyncComponent for App {
                 warn!("active windows not found");
             },
             AppInput::ShouWindow=>{
-                if let Some(windows) = relm4::main_application().active_window() {
-                    windows.show();
-                    return
-                }
+                root.show();
             }
             AppInput::Quit=>{
                 *self.exit_status_code.lock() = AppStatusCode::Exit;
