@@ -56,7 +56,6 @@ enum TrayMenuSignal {
 fn build_menu() -> Menu<TrayMenuSignal> {
     Menu::new([
         MenuItem::button("Open", TrayMenuSignal::Open),
-        MenuItem::separator(),
         MenuItem::button("Quit", TrayMenuSignal::Quit),
     ])
 }
@@ -92,7 +91,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 const GLOBAL_CSS: &str = include_str!("../res/app.css");
 const ABOUT_IMAGE: &[u8] = include_bytes!("../res/about.png");
 #[cfg(target_os = "linux")]
-const TRAY_IMAGE: &[u8] = include_bytes!("../res/linux/space-acres.png");
+const TRAY_ICON: &[u8] = include_bytes!("../res/linux/space-acres.png");
 
 type PosTable = ChiaTable;
 
@@ -107,8 +106,8 @@ enum AppInput {
     InitialConfiguration,
     StartUpgrade,
     Restart,
-    Quit,
     ShouWindow,
+    Quit,
 }
 
 #[derive(Debug)]
@@ -207,8 +206,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
-    #[allow(dead_code)]
-    tray_icon: TrayIcon<TrayMenuSignal>,
+    _tray_icon: TrayIcon<TrayMenuSignal>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
 }
@@ -507,26 +505,28 @@ impl AsyncComponent for App {
         });
 
         #[cfg(target_os = "linux")]
-        let tray_img = Icon::from_png_bytes(&TRAY_IMAGE.to_vec()).expect("icon");
+        let tray_img = Icon::from_png_bytes(TRAY_ICON).expect("Tray icon must exist");
         #[cfg(target_os = "windows")]
-        let tray_img = Icon::from_resource(1, None).expect("icon");
+        let tray_img = Icon::from_resource(1, None).expect("Tray icon must exist");
 
-        let sender_c = sender.clone();
         let tray = TrayIconBuilder::new()
             .with_icon(tray_img)
-            .with_tooltip("Demo System Tray")
+            .with_tooltip("Space Acres")
             .with_menu(build_menu())
-            .build(move |tray_event| match tray_event {
-                TrayEvent::Menu(signal) => match signal {
-                    TrayMenuSignal::Open => sender_c.input(AppInput::ShouWindow),
-                    TrayMenuSignal::Quit => sender_c.input(AppInput::Quit),
-                },
-                TrayEvent::Tray(e) => match e {
-                    ClickType::Double => sender_c.input(AppInput::ShouWindow),
-                    _ => {}
-                },
+            .build({
+                let sender = sender.clone();
+                move |tray_event| match tray_event {
+                    TrayEvent::Menu(signal) => match signal {
+                        TrayMenuSignal::Open => sender.input(AppInput::ShouWindow),
+                        TrayMenuSignal::Quit => sender.input(AppInput::Quit),
+                    },
+                    TrayEvent::Tray(e) => match e {
+                        ClickType::Left => sender.input(AppInput::ShouWindow),
+                        _ => {}
+                    },
+                }
             })
-            .expect("build tray icon");
+            .expect("Must be able to build tray menu");
 
         let mut model = Self {
             current_view: View::Loading,
@@ -542,7 +542,7 @@ impl AsyncComponent for App {
             about_dialog,
             app_data_dir: init.app_data_dir,
             exit_status_code: init.exit_status_code,
-            tray_icon: tray,
+            _tray_icon: tray,
             _background_tasks: Box::new(async move {
                 // Order is important here, if backend is dropped first, there will be an annoying panic in logs due to
                 // notification forwarder sending notification to the component that is already shut down
@@ -626,8 +626,7 @@ impl AsyncComponent for App {
                 root.show();
                 root.maximize();
             }
-            AppInput::Quit => {
-                *self.exit_status_code.lock() = AppStatusCode::Exit;
+            AppInput::Quit => {     
                 relm4::main_application().quit();
             }
         }
