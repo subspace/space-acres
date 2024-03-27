@@ -36,6 +36,7 @@ product-name = "Space Acres"
 
 [dependencies]
 anyhow = "1.0.80"
+betrayer = {version = "0.1.0", features = [] }
 arc-swap = "1.7.0"
 async-lock = "3.3.0"
 async-trait = "0.1.77"

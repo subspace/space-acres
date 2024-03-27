@@ -36,7 +36,9 @@ use tracing::{error, info, warn};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use betrayer::{Icon, TrayIcon, Menu, MenuItem, TrayEvent, TrayIconBuilder};
 
+ 
 /// Number of log files to keep
 const LOG_FILE_LIMIT_COUNT: usize = 5;
 /// Size of one log file
@@ -46,11 +48,26 @@ const LOG_READ_BUFFER: usize = 1024 * 1024;
 /// the child process itself, while supervisor will not attempt to read stdout/stderr at all
 const WINDOWS_SUBSYSTEM_WINDOWS: bool = cfg!(all(windows, not(debug_assertions)));
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum Signal {
+    Open,
+    Quit
+}
+
 #[derive(Debug, Copy, Clone)]
 enum AppStatusCode {
     Exit,
     Restart,
     Unknown(i32),
+}
+
+
+fn build_menu(selected: u32) -> Menu<Signal> {
+    Menu::new([
+        MenuItem::button("Open", Signal::Open),
+        MenuItem::separator(),
+        MenuItem::button("Quit", Signal::Quit)
+    ])
 }
 
 impl AppStatusCode {
@@ -90,6 +107,8 @@ enum AppInput {
     InitialConfiguration,
     StartUpgrade,
     Restart,
+    Open,
+    Quit,
 }
 
 #[derive(Debug)]
@@ -188,6 +207,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
+    tray_icon: TrayIcon<Signal>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
 }
@@ -485,6 +505,20 @@ impl AsyncComponent for App {
             gtk::glib::Propagation::Stop
         });
 
+        let sender_c = sender.clone();
+        let tray = TrayIconBuilder::new()
+        .with_icon(Icon::from_rgba(vec![255u8; 32 * 32 * 4], 32, 32).expect("icon"))
+        .with_tooltip("Demo System Tray")
+        .with_menu(build_menu(0))
+        .build(move |tray_event| {
+            if let TrayEvent::Menu(signal) = tray_event {
+                match signal {
+                    Signal::Open =>  sender_c.input(AppInput::Open),
+                    Signal::Quit => sender_c.input(AppInput::Quit)
+                }
+            } 
+        }).expect("build tray icon");
+        
         let mut model = Self {
             current_view: View::Loading,
             current_raw_config: None,
@@ -499,6 +533,7 @@ impl AsyncComponent for App {
             about_dialog,
             app_data_dir: init.app_data_dir,
             exit_status_code: init.exit_status_code,
+            tray_icon: tray,
             _background_tasks: Box::new(async move {
                 // Order is important here, if backend is dropped first, there will be an annoying panic in logs due to
                 // notification forwarder sending notification to the component that is already shut down
@@ -514,12 +549,16 @@ impl AsyncComponent for App {
         };
 
         let widgets = view_output!();
-
+        
         model.menu_popover = widgets.menu_popover.clone();
 
         if init.minimize_on_start {
             root.minimize();
         }
+        root.connect_close_request(|view|{
+            view.hide();
+            gtk::glib::Propagation::Stop
+        });
 
         AsyncComponentParts { model, widgets }
     }
@@ -571,6 +610,22 @@ impl AsyncComponent for App {
             }
             AppInput::Restart => {
                 *self.exit_status_code.lock() = AppStatusCode::Restart;
+                relm4::main_application().quit();
+
+                if let Some(windows) = relm4::main_application().active_window() {
+                    windows.set_visible(true);
+                    return
+                }
+                warn!("active windows not found");
+            },
+            AppInput::Open => {
+                   if let Some(windows) = relm4::main_application().active_window() {
+                    windows.show();
+                    return
+                }
+            },
+            AppInput::Quit => {
+                *self.exit_status_code.lock() = AppStatusCode::Exit;
                 relm4::main_application().quit();
             }
         }
