@@ -11,6 +11,7 @@ use crate::frontend::configuration::{ConfigurationInput, ConfigurationOutput, Co
 use crate::frontend::loading::{LoadingInput, LoadingView};
 use crate::frontend::new_version::NewVersion;
 use crate::frontend::running::{RunningInit, RunningInput, RunningOutput, RunningView};
+use betrayer::{ClickType, Icon, Menu, MenuItem, TrayEvent, TrayIcon, TrayIconBuilder};
 use clap::Parser;
 use duct::cmd;
 use file_rotate::compression::Compression;
@@ -20,7 +21,6 @@ use futures::channel::mpsc;
 use futures::{select, FutureExt, SinkExt, StreamExt};
 use gtk::prelude::*;
 use parking_lot::Mutex;
-use relm4::factory::Position;
 use relm4::prelude::*;
 use relm4::{Sender, ShutdownReceiver, RELM_THREADS};
 use relm4_icons::icon_name;
@@ -37,9 +37,7 @@ use tracing::{error, info, warn};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
-use betrayer::{Icon, TrayIcon, Menu, MenuItem, TrayEvent,ClickType, TrayIconBuilder};
 
- 
 /// Number of log files to keep
 const LOG_FILE_LIMIT_COUNT: usize = 5;
 /// Size of one log file
@@ -59,7 +57,7 @@ fn build_menu() -> Menu<TrayMenuSignal> {
     Menu::new([
         MenuItem::button("Open", TrayMenuSignal::Open),
         MenuItem::separator(),
-        MenuItem::button("Quit", TrayMenuSignal::Quit)
+        MenuItem::button("Quit", TrayMenuSignal::Quit),
     ])
 }
 
@@ -93,6 +91,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 const GLOBAL_CSS: &str = include_str!("../res/app.css");
 const ABOUT_IMAGE: &[u8] = include_bytes!("../res/about.png");
+#[cfg(target_os = "linux")]
+const TRAY_IMAGE: &[u8] = include_bytes!("../res/linux/space-acres.png");
 
 type PosTable = ChiaTable;
 
@@ -207,7 +207,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
-    #[allow(dead_code)] 
+    #[allow(dead_code)]
     tray_icon: TrayIcon<TrayMenuSignal>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
@@ -507,32 +507,27 @@ impl AsyncComponent for App {
         });
 
         #[cfg(target_os = "linux")]
-        let tray_img  = Icon::from_png_bytes(TRAY_IMAGE.to_vec()).expect("icon");
+        let tray_img = Icon::from_png_bytes(&TRAY_IMAGE.to_vec()).expect("icon");
         #[cfg(target_os = "windows")]
-        let tray_img  = Icon::from_resource(1, None).expect("icon");
+        let tray_img = Icon::from_resource(1, None).expect("icon");
 
         let sender_c = sender.clone();
         let tray = TrayIconBuilder::new()
-        .with_icon(tray_img)
-        .with_tooltip("Demo System Tray")
-        .with_menu(build_menu())
-        .build(move |tray_event| {
-            match tray_event {
-                TrayEvent::Menu(signal)  =>{
-                    match signal {
-                        TrayMenuSignal::Open=> sender_c.input(AppInput::ShouWindow),
-                        TrayMenuSignal::Quit=> sender_c.input(AppInput::Quit),
-                    }
-                }
-                TrayEvent::Tray(e)=>{
-                    match e {
-                        ClickType::Double=>sender_c.input(AppInput::ShouWindow),
-                        _=>{}
-                    }
-                }
-            }
-        }).expect("build tray icon");
-        
+            .with_icon(tray_img)
+            .with_tooltip("Demo System Tray")
+            .with_menu(build_menu())
+            .build(move |tray_event| match tray_event {
+                TrayEvent::Menu(signal) => match signal {
+                    TrayMenuSignal::Open => sender_c.input(AppInput::ShouWindow),
+                    TrayMenuSignal::Quit => sender_c.input(AppInput::Quit),
+                },
+                TrayEvent::Tray(e) => match e {
+                    ClickType::Double => sender_c.input(AppInput::ShouWindow),
+                    _ => {}
+                },
+            })
+            .expect("build tray icon");
+
         let mut model = Self {
             current_view: View::Loading,
             current_raw_config: None,
@@ -563,14 +558,14 @@ impl AsyncComponent for App {
         };
 
         let widgets = view_output!();
-        
+
         model.menu_popover = widgets.menu_popover.clone();
 
         if init.minimize_on_start {
             root.hide();
         }
 
-        root.connect_close_request(|view|{
+        root.connect_close_request(|view| {
             view.hide();
             gtk::glib::Propagation::Stop
         });
@@ -626,17 +621,12 @@ impl AsyncComponent for App {
             AppInput::Restart => {
                 *self.exit_status_code.lock() = AppStatusCode::Restart;
                 relm4::main_application().quit();
-
-                if let Some(windows) = relm4::main_application().active_window() {
-                    windows.set_visible(true);
-                    return
-                }
-                warn!("active windows not found");
-            },
-            AppInput::ShouWindow=>{
-                root.show();
             }
-            AppInput::Quit=>{
+            AppInput::ShouWindow => {
+                root.show();
+                root.maximize();
+            }
+            AppInput::Quit => {
                 *self.exit_status_code.lock() = AppStatusCode::Exit;
                 relm4::main_application().quit();
             }
