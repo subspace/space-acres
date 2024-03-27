@@ -36,7 +36,7 @@ use tracing::{error, info, warn};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
-use betrayer::{Icon, TrayIcon, Menu, MenuItem, TrayEvent, TrayIconBuilder};
+use betrayer::{Icon, TrayIcon, Menu, MenuItem, TrayEvent,ClickType, TrayIconBuilder};
 
  
 /// Number of log files to keep
@@ -49,9 +49,17 @@ const LOG_READ_BUFFER: usize = 1024 * 1024;
 const WINDOWS_SUBSYSTEM_WINDOWS: bool = cfg!(all(windows, not(debug_assertions)));
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum Signal {
+enum TrayMenuSignal {
     Open,
-    Quit
+    Quit,
+}
+
+fn build_menu() -> Menu<TrayMenuSignal> {
+    Menu::new([
+        MenuItem::button("Open", TrayMenuSignal::Open),
+        MenuItem::separator(),
+        MenuItem::button("Quit", TrayMenuSignal::Quit)
+    ])
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -59,15 +67,6 @@ enum AppStatusCode {
     Exit,
     Restart,
     Unknown(i32),
-}
-
-
-fn build_menu(selected: u32) -> Menu<Signal> {
-    Menu::new([
-        MenuItem::button("Open", Signal::Open),
-        MenuItem::separator(),
-        MenuItem::button("Quit", Signal::Quit)
-    ])
 }
 
 impl AppStatusCode {
@@ -107,8 +106,8 @@ enum AppInput {
     InitialConfiguration,
     StartUpgrade,
     Restart,
-    Open,
     Quit,
+    ShouWindow,
 }
 
 #[derive(Debug)]
@@ -207,7 +206,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
-    tray_icon: TrayIcon<Signal>,
+    tray_icon: TrayIcon<TrayMenuSignal>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
 }
@@ -505,18 +504,31 @@ impl AsyncComponent for App {
             gtk::glib::Propagation::Stop
         });
 
+        #[cfg(target_os = "linux")]
+        let tray_img  = Icon::from_png_bytes(TRAY_IMAGE.to_vec()).expect("icon");
+        #[cfg(target_os = "windows")]
+        let tray_img  = Icon::from_resource(1, None).expect("icon");
+
         let sender_c = sender.clone();
         let tray = TrayIconBuilder::new()
-        .with_icon(Icon::from_rgba(vec![255u8; 32 * 32 * 4], 32, 32).expect("icon"))
+        .with_icon(tray_img)
         .with_tooltip("Demo System Tray")
-        .with_menu(build_menu(0))
+        .with_menu(build_menu())
         .build(move |tray_event| {
-            if let TrayEvent::Menu(signal) = tray_event {
-                match signal {
-                    Signal::Open =>  sender_c.input(AppInput::Open),
-                    Signal::Quit => sender_c.input(AppInput::Quit)
+            match tray_event {
+                TrayEvent::Menu(signal)  =>{
+                    match signal {
+                        TrayMenuSignal::Open=> sender_c.input(AppInput::ShouWindow),
+                        TrayMenuSignal::Quit=> sender_c.input(AppInput::Quit),
+                    }
                 }
-            } 
+                TrayEvent::Tray(e)=>{
+                    match e {
+                        ClickType::Double=>sender_c.input(AppInput::ShouWindow),
+                        _=>{}
+                    }
+                }
+            }
         }).expect("build tray icon");
         
         let mut model = Self {
@@ -618,13 +630,13 @@ impl AsyncComponent for App {
                 }
                 warn!("active windows not found");
             },
-            AppInput::Open => {
-                   if let Some(windows) = relm4::main_application().active_window() {
+            AppInput::ShouWindow=>{
+                if let Some(windows) = relm4::main_application().active_window() {
                     windows.show();
                     return
                 }
-            },
-            AppInput::Quit => {
+            }
+            AppInput::Quit=>{
                 *self.exit_status_code.lock() = AppStatusCode::Exit;
                 relm4::main_application().quit();
             }
