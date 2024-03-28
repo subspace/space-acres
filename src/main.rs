@@ -11,7 +11,7 @@ use crate::frontend::configuration::{ConfigurationInput, ConfigurationOutput, Co
 use crate::frontend::loading::{LoadingInput, LoadingView};
 use crate::frontend::new_version::NewVersion;
 use crate::frontend::running::{RunningInit, RunningInput, RunningOutput, RunningView};
-use betrayer::{ClickType, Icon, Menu, MenuItem, TrayEvent, TrayIcon, TrayIconBuilder};
+use betrayer::{Icon, Menu, MenuItem, TrayEvent, TrayIcon, TrayIconBuilder};
 use clap::Parser;
 use duct::cmd;
 use file_rotate::compression::Compression;
@@ -53,13 +53,6 @@ enum TrayMenuSignal {
     Quit,
 }
 
-fn build_menu() -> Menu<TrayMenuSignal> {
-    Menu::new([
-        MenuItem::button("Open", TrayMenuSignal::Open),
-        MenuItem::button("Quit", TrayMenuSignal::Quit),
-    ])
-}
-
 #[derive(Debug, Copy, Clone)]
 enum AppStatusCode {
     Exit,
@@ -90,7 +83,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 const GLOBAL_CSS: &str = include_str!("../res/app.css");
 const ABOUT_IMAGE: &[u8] = include_bytes!("../res/about.png");
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 const TRAY_ICON: &[u8] = include_bytes!("../res/linux/space-acres.png");
 
 type PosTable = ChiaTable;
@@ -106,7 +99,7 @@ enum AppInput {
     InitialConfiguration,
     StartUpgrade,
     Restart,
-    ShouWindow,
+    ShowWindow,
     Quit,
 }
 
@@ -504,29 +497,29 @@ impl AsyncComponent for App {
             gtk::glib::Propagation::Stop
         });
 
-        #[cfg(target_os = "linux")]
-        let tray_img = Icon::from_png_bytes(TRAY_ICON).expect("Tray icon must exist");
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        let tray_img = Icon::from_png_bytes(TRAY_ICON).expect("Tray icon exists and is a valid PNG; qe");
         #[cfg(target_os = "windows")]
-        let tray_img = Icon::from_resource(1, None).expect("Tray icon must exist");
+        let tray_img = Icon::from_resource(1, None).expect("Tray icon exists and is a valid PNG; qe");
 
         let tray = TrayIconBuilder::new()
             .with_icon(tray_img)
             .with_tooltip("Space Acres")
-            .with_menu(build_menu())
+            .with_menu(Menu::new([
+                MenuItem::button("Open", TrayMenuSignal::Open),
+                MenuItem::button("Quit", TrayMenuSignal::Quit),
+            ]))
             .build({
                 let sender = sender.clone();
                 move |tray_event| match tray_event {
                     TrayEvent::Menu(signal) => match signal {
-                        TrayMenuSignal::Open => sender.input(AppInput::ShouWindow),
+                        TrayMenuSignal::Open => sender.input(AppInput::ShowWindow),
                         TrayMenuSignal::Quit => sender.input(AppInput::Quit),
                     },
-                    TrayEvent::Tray(e) => match e {
-                        ClickType::Left => sender.input(AppInput::ShouWindow),
-                        _ => {}
-                    },
+                    _ => {}
                 }
             })
-            .expect("Must be able to build tray menu");
+            .expect("Icon is added in build script; qed");
 
         let mut model = Self {
             current_view: View::Loading,
@@ -622,7 +615,7 @@ impl AsyncComponent for App {
                 *self.exit_status_code.lock() = AppStatusCode::Restart;
                 relm4::main_application().quit();
             }
-            AppInput::ShouWindow => {
+            AppInput::ShowWindow => {
                 root.show();
                 root.maximize();
             }

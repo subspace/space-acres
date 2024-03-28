@@ -36,7 +36,7 @@ product-name = "Space Acres"
 
 [dependencies]
 anyhow = "1.0.80"
-betrayer = {version = "0.1.0"}
+betrayer = { git = "https://github.com/hunjixin/betrayer.git", rev="bf5e5a4" }                             
 arc-swap = "1.7.0"
 async-lock = "3.3.0"
 async-trait = "0.1.77"
@@ -100,7 +100,7 @@ tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 
 [target.'cfg(linux)'.build-dependencies]
-zbus = "3.15.2"
+zbus_macros = "4.1.2"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"
