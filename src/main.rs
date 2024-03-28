@@ -199,7 +199,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
-    _tray_icon: TrayIcon<TrayMenuSignal>,
+    tray_icon: Option<TrayIcon<TrayMenuSignal>>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
 }
@@ -498,9 +498,11 @@ impl AsyncComponent for App {
         });
 
         #[cfg(any(target_os = "macos", target_os = "linux"))]
-        let tray_img = Icon::from_png_bytes(TRAY_ICON).expect("Tray icon exists and is a valid PNG; qe");
+        let tray_img =
+            Icon::from_png_bytes(TRAY_ICON).expect("Tray icon exists and is a valid PNG; qed");
         #[cfg(target_os = "windows")]
-        let tray_img = Icon::from_resource(1, None).expect("Tray icon exists and is a valid PNG; qe");
+        let tray_img =
+            Icon::from_resource(1, None).expect("Tray icon exists and is a valid PNG; qed");
 
         let tray = TrayIconBuilder::new()
             .with_icon(tray_img)
@@ -519,7 +521,10 @@ impl AsyncComponent for App {
                     _ => {}
                 }
             })
-            .expect("Icon is added in build script; qed");
+            .map_err(|err| {
+                warn!("Unable to start {} tray icon ", err);
+            })
+            .ok();
 
         let mut model = Self {
             current_view: View::Loading,
@@ -535,7 +540,7 @@ impl AsyncComponent for App {
             about_dialog,
             app_data_dir: init.app_data_dir,
             exit_status_code: init.exit_status_code,
-            _tray_icon: tray,
+            tray_icon: tray,
             _background_tasks: Box::new(async move {
                 // Order is important here, if backend is dropped first, there will be an annoying panic in logs due to
                 // notification forwarder sending notification to the component that is already shut down
@@ -555,13 +560,15 @@ impl AsyncComponent for App {
         model.menu_popover = widgets.menu_popover.clone();
 
         if init.minimize_on_start {
-            root.hide();
+            match model.tray_icon {
+                Some(_) => root.hide(),
+                None => root.minimize(),
+            }
         }
 
-        root.connect_close_request(|view| {
-            view.hide();
-            gtk::glib::Propagation::Stop
-        });
+        if model.tray_icon.is_some() {
+            root.set_hide_on_close(true);
+        }
 
         AsyncComponentParts { model, widgets }
     }
@@ -616,10 +623,9 @@ impl AsyncComponent for App {
                 relm4::main_application().quit();
             }
             AppInput::ShowWindow => {
-                root.show();
-                root.maximize();
+                root.present();
             }
-            AppInput::Quit => {     
+            AppInput::Quit => {
                 relm4::main_application().quit();
             }
         }
