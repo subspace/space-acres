@@ -36,6 +36,7 @@ product-name = "Space Acres"
 
 [dependencies]
 anyhow = "1.0.80"
+betrayer = { git = "https://github.com/hunjixin/betrayer.git", rev="bf5e5a4" }                             
 arc-swap = "1.7.0"
 async-lock = "3.3.0"
 async-trait = "0.1.77"

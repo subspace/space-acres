@@ -11,6 +11,7 @@ use crate::frontend::configuration::{ConfigurationInput, ConfigurationOutput, Co
 use crate::frontend::loading::{LoadingInput, LoadingView};
 use crate::frontend::new_version::NewVersion;
 use crate::frontend::running::{RunningInit, RunningInput, RunningOutput, RunningView};
+use betrayer::{Icon, Menu, MenuItem, TrayEvent, TrayIcon, TrayIconBuilder};
 use clap::Parser;
 use duct::cmd;
 use file_rotate::compression::Compression;
@@ -46,6 +47,12 @@ const LOG_READ_BUFFER: usize = 1024 * 1024;
 /// the child process itself, while supervisor will not attempt to read stdout/stderr at all
 const WINDOWS_SUBSYSTEM_WINDOWS: bool = cfg!(all(windows, not(debug_assertions)));
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum TrayMenuSignal {
+    Open,
+    Quit,
+}
+
 #[derive(Debug, Copy, Clone)]
 enum AppStatusCode {
     Exit,
@@ -76,6 +83,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 const GLOBAL_CSS: &str = include_str!("../res/app.css");
 const ABOUT_IMAGE: &[u8] = include_bytes!("../res/about.png");
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const TRAY_ICON: &[u8] = include_bytes!("../res/linux/space-acres.png");
 
 type PosTable = ChiaTable;
 
@@ -90,6 +99,8 @@ enum AppInput {
     InitialConfiguration,
     StartUpgrade,
     Restart,
+    ShowWindow,
+    Quit,
 }
 
 #[derive(Debug)]
@@ -188,6 +199,7 @@ struct App {
     about_dialog: gtk::AboutDialog,
     app_data_dir: Option<PathBuf>,
     exit_status_code: Arc<Mutex<AppStatusCode>>,
+    tray_icon: Option<TrayIcon<TrayMenuSignal>>,
     // Stored here so `Drop` is called on this future as well, preventing exit until everything shuts down gracefully
     _background_tasks: Box<dyn Future<Output = ()>>,
 }
@@ -485,6 +497,35 @@ impl AsyncComponent for App {
             gtk::glib::Propagation::Stop
         });
 
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        let tray_img =
+            Icon::from_png_bytes(TRAY_ICON).expect("Tray icon exists and is a valid PNG; qed");
+        #[cfg(target_os = "windows")]
+        let tray_img =
+            Icon::from_resource(1, None).expect("Tray icon exists and is a valid PNG; qed");
+
+        let tray = TrayIconBuilder::new()
+            .with_icon(tray_img)
+            .with_tooltip("Space Acres")
+            .with_menu(Menu::new([
+                MenuItem::button("Open", TrayMenuSignal::Open),
+                MenuItem::button("Quit", TrayMenuSignal::Quit),
+            ]))
+            .build({
+                let sender = sender.clone();
+                move |tray_event| match tray_event {
+                    TrayEvent::Menu(signal) => match signal {
+                        TrayMenuSignal::Open => sender.input(AppInput::ShowWindow),
+                        TrayMenuSignal::Quit => sender.input(AppInput::Quit),
+                    },
+                    _ => {}
+                }
+            })
+            .map_err(|err| {
+                warn!("Unable to start {} tray icon ", err);
+            })
+            .ok();
+
         let mut model = Self {
             current_view: View::Loading,
             current_raw_config: None,
@@ -499,6 +540,7 @@ impl AsyncComponent for App {
             about_dialog,
             app_data_dir: init.app_data_dir,
             exit_status_code: init.exit_status_code,
+            tray_icon: tray,
             _background_tasks: Box::new(async move {
                 // Order is important here, if backend is dropped first, there will be an annoying panic in logs due to
                 // notification forwarder sending notification to the component that is already shut down
@@ -518,7 +560,14 @@ impl AsyncComponent for App {
         model.menu_popover = widgets.menu_popover.clone();
 
         if init.minimize_on_start {
-            root.minimize();
+            match model.tray_icon {
+                Some(_) => root.hide(),
+                None => root.minimize(),
+            }
+        }
+
+        if model.tray_icon.is_some() {
+            root.set_hide_on_close(true);
         }
 
         AsyncComponentParts { model, widgets }
@@ -528,7 +577,7 @@ impl AsyncComponent for App {
         &mut self,
         input: Self::Input,
         sender: AsyncComponentSender<Self>,
-        _root: &Self::Root,
+        root: &Self::Root,
     ) {
         match input {
             AppInput::OpenLogFolder => {
@@ -571,6 +620,12 @@ impl AsyncComponent for App {
             }
             AppInput::Restart => {
                 *self.exit_status_code.lock() = AppStatusCode::Restart;
+                relm4::main_application().quit();
+            }
+            AppInput::ShowWindow => {
+                root.present();
+            }
+            AppInput::Quit => {
                 relm4::main_application().quit();
             }
         }
