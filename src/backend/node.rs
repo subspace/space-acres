@@ -20,6 +20,8 @@ use sc_network::config::{Ed25519Secret, NodeKeyConfig, NonReservedPeerMode, SetC
 use sc_service::{BlocksPruning, Configuration, GenericChainSpec};
 use sc_storage_monitor::{StorageMonitorParams, StorageMonitorService};
 use serde_json::Value;
+use sp_api::ProvideRuntimeApi;
+use sp_consensus_subspace::SubspaceApi;
 use sp_core::crypto::Ss58AddressFormat;
 use sp_core::storage::StorageKey;
 use sp_core::H256;
@@ -30,7 +32,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use subspace_core_primitives::{BlockNumber, PublicKey};
+use subspace_core_primitives::{solution_range_to_sectors, BlockNumber, PublicKey};
 use subspace_fake_runtime_api::RuntimeApi;
 use subspace_networking::libp2p::identity::ed25519::Keypair;
 use subspace_networking::libp2p::Multiaddr;
@@ -124,7 +126,7 @@ struct Handlers {
 }
 
 pub(super) struct ConsensusNode {
-    full_node: NewFull<FullClient<RuntimeApi>>,
+    pub(super) full_node: NewFull<FullClient<RuntimeApi>>,
     pause_sync: Arc<AtomicBool>,
     chain_info: ChainInfo,
     handlers: Handlers,
@@ -236,6 +238,20 @@ impl ConsensusNode {
 
     pub(super) fn best_block_number(&self) -> BlockNumber {
         self.full_node.client.info().best_number
+    }
+
+    pub(super) fn best_block_hash(&self) -> H256 {
+        self.full_node.client.info().best_hash
+    }
+
+    /// Returns current solution range & max. pieces in a sector
+    pub(super) fn total_space_pledged_chain_constants(&self) -> anyhow::Result<(u64, u16)> {
+        let runtime_api = self.full_node.client.runtime_api();
+        let block_hash = self.full_node.client.info().best_hash;
+        let current_solution_range = runtime_api.solution_ranges(block_hash)?.current;
+        let max_pieces_in_sector = runtime_api.max_pieces_in_sector(block_hash)?;
+
+        Ok((current_solution_range, max_pieces_in_sector))
     }
 
     pub(super) fn account_balance(&self, account: &PublicKey) -> Balance {
@@ -599,4 +615,20 @@ pub(super) async fn create_consensus_node(
     maybe_node_client.inject(Box::new(direct_node_client));
 
     Ok(ConsensusNode::new(consensus_node, pause_sync, chain_info))
+}
+
+pub(crate) fn total_space_pledged(
+    current_solution_range: u64,
+    slot_probability: (u64, u64),
+    max_pieces_in_sector: u16,
+) -> u128 {
+    // calculate the sectors
+    let sectors = solution_range_to_sectors(
+        current_solution_range,
+        slot_probability,
+        max_pieces_in_sector,
+    );
+
+    // Calculate the total space pledged
+    sectors as u128 * max_pieces_in_sector as u128 * subspace_core_primitives::Piece::SIZE as u128
 }

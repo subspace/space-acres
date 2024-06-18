@@ -710,6 +710,7 @@ impl App {
                 reward_address_balance,
                 initial_farm_states,
                 chain_info,
+                chain_constants,
             } => {
                 self.current_raw_config.replace(raw_config.clone());
                 self.current_view = View::Running;
@@ -719,6 +720,7 @@ impl App {
                     initial_farm_states,
                     raw_config,
                     chain_info,
+                    chain_constants,
                 });
             }
             BackendNotification::Node(node_notification) => {
@@ -734,6 +736,10 @@ impl App {
             }
             BackendNotification::IrrecoverableError { error } => {
                 self.current_view = View::Error(error);
+            }
+            BackendNotification::AllocatedDiskSpace(disk_space) => {
+                self.running_view
+                    .emit(RunningInput::AllocatedDiskSpace(disk_space));
             }
         }
     }

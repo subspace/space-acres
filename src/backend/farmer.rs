@@ -2,7 +2,7 @@ pub(super) mod direct_node_client;
 pub(super) mod maybe_node_client;
 
 use crate::backend::farmer::maybe_node_client::MaybeNodeClient;
-use crate::backend::utils::{Handler, HandlerFn};
+use crate::backend::utils::{Handler, HandlerFn, EXPECTED_VOTES_PER_BLOCK};
 use crate::backend::PieceGetterWrapper;
 use crate::PosTable;
 use anyhow::anyhow;
@@ -13,6 +13,7 @@ use futures::future::BoxFuture;
 use futures::stream::FuturesUnordered;
 use futures::{select, FutureExt, StreamExt};
 use parking_lot::Mutex;
+use sp_runtime::traits::Zero;
 use std::future::pending;
 use std::hash::Hash;
 use std::num::{NonZeroU8, NonZeroUsize};
@@ -692,4 +693,36 @@ where
         notifications,
         action_sender,
     })
+}
+
+/// Calculate the ETA for reward payment.
+///
+/// ETA = total_space_pledged/(space_pledged * (1 * (num_votes + 1)/6))
+///
+/// The farmer can expect reward in secs/mins/hrs/days/weeks time.
+pub(crate) fn calculate_expected_reward_duration_from_now(
+    total_space_pledged: u128,
+    space_pledged: u128,
+) -> anyhow::Result<Duration> {
+    // Ensure space_pledged is non-zero to prevent division by zero.
+    if space_pledged.is_zero() {
+        return Err(anyhow!("Division by zero error: space_pledged is zero"));
+    }
+
+    if total_space_pledged.is_zero() {
+        return Ok(Duration::from_secs(0));
+    }
+
+    // Expected time duration for next reward payment since the last reward payment timestamp.
+    let eta_duration = total_space_pledged
+        .checked_div(
+            space_pledged
+                .checked_mul(EXPECTED_VOTES_PER_BLOCK as u128 + 1)
+                .expect("Multiplication error")
+                .checked_div(6)
+                .expect("Division error"),
+        )
+        .expect("Error calculating ETA");
+
+    Ok(Duration::from_secs(eta_duration as u64))
 }

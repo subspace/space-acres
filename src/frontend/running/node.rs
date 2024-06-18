@@ -305,6 +305,7 @@ impl NodeView {
                             .add_sample(last_block_import_time.elapsed());
                     }
                 }
+                _ => {}
             },
             NodeInput::OpenNodeFolder => {
                 let node_path = self.node_path.lock().clone();
