@@ -668,10 +668,18 @@ impl App {
     fn process_backend_notification(&mut self, notification: BackendNotification) {
         match notification {
             // TODO: Render progress
-            BackendNotification::Loading { step, progress: _ } => {
+            BackendNotification::Loading {
+                step,
+                progress,
+                message,
+            } => {
                 self.current_view = View::Loading;
                 self.status_bar_notification = StatusBarNotification::None;
-                self.loading_view.emit(LoadingInput::BackendLoading(step));
+                self.loading_view.emit(LoadingInput::BackendLoading {
+                    step,
+                    progress,
+                    message,
+                });
             }
             BackendNotification::IncompatibleChain {
                 raw_config,
