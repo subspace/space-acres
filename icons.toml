@@ -1,0 +1,4 @@
+# Icons configuration
+app_id = "com.my.app"
+base_resource_path = "/com/my/app/"
+icons = ["ssd", "size-horizontally", "cross", "checkmark", "wallet2", "warning", "puzzle-piece", "pause", "menu-large", "processor", "speedometer2", "speedometer3", "speedometer4", "grid-filled"]

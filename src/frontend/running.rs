@@ -11,10 +11,10 @@ use crate::frontend::translations::{AsDefaultStr, T};
 use crate::frontend::widgets::progress_circle::{
     ProgressCircle, ProgressCircleInit, ProgressCircleInput,
 };
+use crate::icon_names;
 use gtk::prelude::*;
 use relm4::factory::FactoryHashMap;
 use relm4::prelude::*;
-use relm4_icons::icon_name;
 use sp_consensus_subspace::ChainConstants;
 use std::num::NonZeroU8;
 use std::time::{Duration, Instant};
@@ -123,7 +123,7 @@ impl Component for RunningView {
                             connect_clicked => RunningInput::ToggleFarmDetails,
                             set_cursor_from_name: Some("pointer"),
                             set_has_frame: false,
-                            set_icon_name: icon_name::GRID_FILLED,
+                            set_icon_name: icon_names::GRID_FILLED,
                             set_tooltip: &T.running_farmer_button_expand_details(),
                         },
                         gtk::ToggleButton {
@@ -131,7 +131,7 @@ impl Component for RunningView {
                             set_active: model.plotting_paused,
                             set_cursor_from_name: Some("pointer"),
                             set_has_frame: false,
-                            set_icon_name: icon_name::PAUSE,
+                            set_icon_name: icon_names::PAUSE,
                             set_tooltip: &T.running_farmer_button_pause_plotting(),
                         },
                     },
