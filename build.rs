@@ -24,6 +24,18 @@ fn main() {
     )
     .unwrap();
 
+    // Compile icons
+
+    let manifest_path = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+
+    let config = relm4_icons::build_utils::Config::load(
+        &manifest_path,
+        Some(relm4_icons::constants::SHIPPED_ICONS_PATH.to_string()),
+    )
+    .expect("couldn't load manifest");
+
+    relm4_icons::build_utils::bundle_icons(config, &manifest_path);
+
     #[cfg(windows)]
     {
         let mut res = winres::WindowsResource::new();

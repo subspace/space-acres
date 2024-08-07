@@ -52,7 +52,7 @@ frame-system = { git = "https://github.com/subspace/polkadot-sdk", rev = "0cbfcb
 fs4 = "0.8.4"
 futures = "0.3.30"
 futures-timer = "3.0.3"
-gtk = { version = "0.7.3", package = "gtk4" }
+gtk = { version = "0.8", package = "gtk4" }
 hex = "0.4.3"
 image = { version = "0.25.1", default-features = false, features = ["png"] }
 mimalloc = "0.1.41"
@@ -61,9 +61,9 @@ open = "5.2.0"
 pallet-balances = { git = "https://github.com/subspace/polkadot-sdk", rev = "0cbfcb0232bbf71ac5b14cc8c99bf043cec420ef", default-features = false }
 parity-scale-codec = "3.6.12"
 parking_lot = "0.12.3"
-relm4 = "0.7.0-rc.1"
-relm4-components = { version = "0.7.0-rc.1", default-features = false }
-relm4-icons = { version = "0.7.0-alpha.2", features = ["checkmark", "cross", "grid-filled", "menu-large", "pause", "processor", "puzzle-piece", "size-horizontally", "speedometer2", "speedometer3", "speedometer4", "ssd", "wallet2", "warning"] }
+relm4 = "0.8.0"
+relm4-components = { version = "0.8.0", default-features = false }
+relm4-icons = { path = "../icons" }
 reqwest = { version = "0.12.4", default-features = false, features = ["json", "rustls-tls"] }
 sc-client-api = { git = "https://github.com/subspace/polkadot-sdk", rev = "0cbfcb0232bbf71ac5b14cc8c99bf043cec420ef", default-features = false }
 sc-client-db = { git = "https://github.com/subspace/polkadot-sdk", rev = "0cbfcb0232bbf71ac5b14cc8c99bf043cec420ef", default-features = false }
@@ -117,6 +117,7 @@ native-dialog = "0.7.0"
 [build-dependencies]
 # TODO: Switch to 0.3.0 once https://github.com/zaytsev/fluent-static/pull/7 is merged
 fluent-static-codegen = { git = "https://github.com/zaytsev/fluent-static", rev = "06dd20b7f525a80fa86398f665cff1ae3993f470" }
+relm4-icons = { path = "../icons", features = ["build-utils"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"

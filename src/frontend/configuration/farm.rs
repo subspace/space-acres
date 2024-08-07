@@ -8,8 +8,8 @@ use relm4::prelude::*;
 // TODO: Remove import once in prelude: https://github.com/Relm4/Relm4/issues/662
 use crate::frontend::configuration::utils::is_directory_writable;
 use crate::frontend::translations::{AsDefaultStr, T};
+use crate::icon_names;
 use relm4::AsyncFactorySender;
-use relm4_icons::icon_name;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tracing::warn;
@@ -114,7 +114,7 @@ impl AsyncFactoryComponent for FarmWidget {
                                     )
                                     .as_str(),
                             ),
-                            set_primary_icon_name: Some(icon_name::SSD),
+                            set_primary_icon_name: Some(icon_names::SSD),
                             set_primary_icon_activatable: false,
                             set_primary_icon_sensitive: false,
                             #[track = "self.path.changed_is_valid()"]
@@ -154,7 +154,7 @@ impl AsyncFactoryComponent for FarmWidget {
                         set_placeholder_text: Some(
                             &T.configuration_farm_size_placeholder(),
                         ),
-                        set_primary_icon_name: Some(icon_name::SIZE_HORIZONTALLY),
+                        set_primary_icon_name: Some(icon_names::SIZE_HORIZONTALLY),
                         set_primary_icon_activatable: false,
                         set_primary_icon_sensitive: false,
                         #[track = "self.size.changed_is_valid()"]
@@ -174,7 +174,7 @@ impl AsyncFactoryComponent for FarmWidget {
                                 warn!("Can't send delete output");
                             }
                         },
-                        set_icon_name: icon_name::CROSS,
+                        set_icon_name: icon_names::CROSS,
                         set_tooltip: &T.configuration_farm_delete(),
                     },
                 },

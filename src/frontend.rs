@@ -13,7 +13,7 @@ use crate::frontend::loading::{LoadingInput, LoadingView};
 use crate::frontend::new_version::NewVersion;
 use crate::frontend::running::{RunningInit, RunningInput, RunningOutput, RunningView};
 use crate::frontend::translations::{AsDefaultStr, T};
-use crate::AppStatusCode;
+use crate::{icon_names, AppStatusCode};
 use betrayer::{Icon, Menu, MenuItem, TrayEvent, TrayIcon, TrayIconBuilder};
 use futures::channel::mpsc;
 use futures::{select, FutureExt, SinkExt, StreamExt};
@@ -21,7 +21,6 @@ use gtk::prelude::*;
 use relm4::actions::{RelmAction, RelmActionGroup};
 use relm4::prelude::*;
 use relm4::{Sender, ShutdownReceiver};
-use relm4_icons::icon_name;
 use std::cell::Cell;
 use std::future::Future;
 use std::path::PathBuf;
@@ -223,7 +222,7 @@ impl AsyncComponent for App {
                         //  cases, would be nice to just hide corresponding menu item instead
                         gtk::MenuButton {
                             set_direction: gtk::ArrowType::None,
-                            set_icon_name: icon_name::MENU_LARGE,
+                            set_icon_name: icon_names::MENU_LARGE,
                             set_popover: Some(&gtk::PopoverMenu::from_model(Some(&main_menu_without_change_configuration))),
                             #[track = "model.changed_current_raw_config()"]
                             set_visible: model.current_raw_config.is_none(),
@@ -231,7 +230,7 @@ impl AsyncComponent for App {
 
                         gtk::MenuButton {
                             set_direction: gtk::ArrowType::None,
-                            set_icon_name: icon_name::MENU_LARGE,
+                            set_icon_name: icon_names::MENU_LARGE,
                             set_popover: Some(&gtk::PopoverMenu::from_model(Some(&main_menu))),
                             #[track = "model.changed_current_raw_config()"]
                             set_visible: model.current_raw_config.is_some(),

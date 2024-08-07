@@ -28,6 +28,10 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
+mod icon_names {
+    include!(concat!(env!("OUT_DIR"), "/icon_names.rs"));
+}
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -216,7 +220,7 @@ impl Cli {
         });
 
         app.set_global_css(GLOBAL_CSS);
-        relm4_icons::initialize_icons();
+        relm4_icons::initialize_icons!(icon_names::BASE_RESOURCE_PATH, icon_names::APP_ID);
 
         // Prefer dark theme in cross-platform way if environment is configured that way
         if let Some(settings) = gtk::Settings::default() {
