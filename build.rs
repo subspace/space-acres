@@ -1,4 +1,5 @@
 use fluent_static_codegen::{generate, MessageBundleCodeGenerator};
+use relm4_icons::build_utils::Config;
 use std::path::Path;
 use std::{env, fs};
 
@@ -28,4 +29,14 @@ fn main() {
         res.set_icon("res\\windows\\space-acres.ico");
         res.compile().unwrap();
     }
+
+    let manifest_path = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+
+    let config = Config::load(
+        &manifest_path,
+        Some(relm4_icons::constants::SHIPPED_ICONS_PATH.to_string()),
+    )
+    .expect("couldn't load manifest");
+
+    relm4_icons::build_utils::bundle_icons(config, &manifest_path);
 }
