@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(
     const_option,
     let_chains,
@@ -48,7 +48,7 @@ const LOG_FILE_LIMIT_SIZE: usize = ByteSize::mib(10).as_u64() as usize;
 const LOG_READ_BUFFER: usize = ByteSize::mib(1).as_u64() as usize;
 /// If `true`, this means supervisor will not be able to capture logs from child application and logger needs to be in
 /// the child process itself, while supervisor will not attempt to read stdout/stderr at all
-const WINDOWS_SUBSYSTEM_WINDOWS: bool = cfg!(all(windows, not(debug_assertions)));
+const WINDOWS_SUBSYSTEM_WINDOWS: bool = false;
 
 type PosTableLegacy = ChiaTableLegacy;
 type PosTable = ChiaTable;
